@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using PDHours.Application.Interfaces.IServices;
 
 namespace PDHours.API.Controllers
 {
@@ -7,10 +7,17 @@ namespace PDHours.API.Controllers
     [ApiController]
     public class SquadController : ControllerBase
     {
+        private readonly ISquadService _service;
+
+        public SquadController(ISquadService service)
+        {
+            _service = service;
+        }
+
         [HttpGet]
         public IActionResult Get()
         {
-            return Ok("SquadController is working!");
+            return Ok(_service.GetAll());
         }
     }
 }

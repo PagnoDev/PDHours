@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\PDHours.Application\PDHours.Application.csproj" />
     <ProjectReference Include="..\PDHours.Domain\PDHours.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Repositories\" />
     <Folder Include="Migrations\" />
   </ItemGroup>
 

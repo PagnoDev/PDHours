@@ -10,10 +10,10 @@ namespace PDHours.Domain.Models
         public required string Name { get; set; }
         public required int EstimateHours { get; set; }
         public required int SquadId { get; set; }
-        
+
         [JsonIgnore]
-        public required SquadModel Squad { get; set; }
+        public SquadModel? Squad { get; set; }
         [JsonIgnore]
-        public required List<ReportModel> Reports { get; set; }
-    }
+        public List<ReportModel>? Reports { get; set; }
+    }   
 }
