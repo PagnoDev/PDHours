@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace PDHours.Domain.Models
 {
     public class SquadModel
     {
         [Key]
-        public required int Id { get; set; }
+        public int Id { get; set; }
         public required string Name { get; set; }
-        public List<EmployeeModel> Employees { get; set; }
+        public List<EmployeeModel>? Employees { get; set; }
     }
 }

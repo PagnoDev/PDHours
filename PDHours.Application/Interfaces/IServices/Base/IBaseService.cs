@@ -7,7 +7,7 @@ namespace PDHours.Application.Interfaces.IServices.Base
         void Add(T entity);
         void Update(T entity);
         void Delete(T entity);
-        T? GetById(int id);
-        IQueryable<T> GetAll();
+        Task<T?> GetById(int id);
+        Task<IQueryable<T>> GetAll();
     }
 }

@@ -16,27 +16,27 @@ namespace PDHours.Application.Services.Base
             _repository = repository;
         }
 
-        public void Add(T entity)
+        public async void Add(T entity)
         {
             _repository.Add(entity);
         }
 
-        public void Update(T entity)
+        public async void Update(T entity)
         {
             _repository.Update(entity);
         }
 
-        public void Delete(T entity)
+        public async void Delete(T entity)
         {
             _repository.Delete(entity);
         }
 
-        public T? GetById(int id)
+        public async Task<T?> GetById(int id)
         {
             return _repository.GetById(id);
         }
 
-        public IQueryable<T> GetAll()
+        public async Task<IQueryable<T>> GetAll()
         {
             return _repository.GetAll();
         }
