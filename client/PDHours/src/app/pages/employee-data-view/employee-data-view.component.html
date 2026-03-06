@@ -91,15 +91,15 @@
           type="number"
           placeholder="Digite o Id da squad"
           [value]="createSquadId()"
-          [class.input-error]="squadFieldError()"
+          [class.input-error]="!!squadValidationMessage()"
           (input)="onCreateSquadIdInput($event)"
         />
-        @if (squadFieldError()) {
+        @if (squadValidationMessage()) {
           <img class="input-error-icon-svg" src="/assets/icons/error.svg" alt="" aria-hidden="true" />
         }
       </div>
-      @if (squadFieldError()) {
-        <p class="field-error">Error</p>
+      @if (squadValidationMessage()) {
+        <p class="field-error">{{ squadValidationMessage() }}</p>
       }
 
       <div class="modal-actions">

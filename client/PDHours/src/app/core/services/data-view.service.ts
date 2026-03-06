@@ -3,9 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import {
   CreateEmployeeRequestDto,
-  EmployeeLatestReportDto,
   CreateReportRequestDto,
   CreateSquadRequestDto,
+  EmployeeLatestReportDto,
   EmployeeListDto,
   EmployeeTableView,
   SquadDailyAverageDto,
@@ -19,8 +19,22 @@ import {
 @Injectable({ providedIn: 'root' })
 export class DataViewService {
   private readonly http = inject(HttpClient);
-
   private readonly apiBaseUrl = 'https://localhost:7185';
+
+  private static readonly REPORT_DESCRIPTION_KEYS = ['description', 'Description', 'descricao'];
+  private static readonly REPORT_DATE_KEYS = [
+    'Created_At',
+    'created_At',
+    'created_at',
+    'createdAt',
+    'CreatedAt',
+    'createdIn',
+    'CreatedIn',
+    'createdOn',
+    'CreatedOn',
+    'date',
+    'Date'
+  ];
 
   getEmployeeTableView(): Observable<EmployeeTableView[]> {
     return forkJoin({
@@ -29,7 +43,6 @@ export class DataViewService {
     }).pipe(
       map(({ employees, squads }) => {
         const squadsById = new Map<number, string>();
-
         for (const squad of squads) {
           squadsById.set(squad.id, squad.name);
         }
@@ -49,8 +62,8 @@ export class DataViewService {
       squads: this.getSquadsDto(),
       employees: this.getEmployeesDto().pipe(catchError(() => of([] as EmployeeListDto[])))
     }).pipe(
-      map(({ squads, employees }) => {
-        return squads.map((squad) => {
+      map(({ squads, employees }) =>
+        squads.map((squad) => {
           const employeesBySquad = employees.filter((employee) => employee.squadId === squad.id);
           const totalEstimateHours = employeesBySquad.reduce(
             (total, employee) => total + employee.estimateHours,
@@ -63,8 +76,8 @@ export class DataViewService {
             employeesCount: employeesBySquad.length,
             totalEstimateHours
           };
-        });
-      })
+        })
+      )
     );
   }
 
@@ -117,7 +130,7 @@ export class DataViewService {
 
         return forkJoin(
           members.map((member) =>
-            this.getEmployeeLatestReport(member.employeeId, startDate, endDate).pipe(
+            this.getEmployeeLatestReport(member.employeeId).pipe(
               map((latestReport) => ({
                 employeeId: member.employeeId,
                 name: member.name,
@@ -132,11 +145,7 @@ export class DataViewService {
     );
   }
 
-  getEmployeeLatestReport(
-    employeeId: number,
-    _startDate: string,
-    _endDate: string
-  ): Observable<EmployeeLatestReportDto | null> {
+  getEmployeeLatestReport(employeeId: number): Observable<EmployeeLatestReportDto | null> {
     const filterExpr = `EmployeeId eq ${employeeId}`;
     const url =
       `${this.apiBaseUrl}/Report` +
@@ -150,58 +159,21 @@ export class DataViewService {
   }
 
   private extractLatestReport(response: unknown): EmployeeLatestReportDto | null {
-    const rawRows = this.extractRows(response);
-    if (rawRows.length === 0) {
+    const rows = this.extractRows(response);
+    if (rows.length === 0) {
       return null;
     }
 
-    const latest = [...rawRows].sort((a, b) => {
-      const aDate = this.readStringProp(a, [
-        'Created_At',
-        'created_At',
-        'created_at',
-        'createdAt',
-        'CreatedAt',
-        'createdIn',
-        'CreatedIn',
-        'createdOn',
-        'CreatedOn',
-        'date',
-        'Date'
-      ]);
-      const bDate = this.readStringProp(b, [
-        'Created_At',
-        'created_At',
-        'created_at',
-        'createdAt',
-        'CreatedAt',
-        'createdIn',
-        'CreatedIn',
-        'createdOn',
-        'CreatedOn',
-        'date',
-        'Date'
-      ]);
-
-      const aTime = aDate ? new Date(aDate).getTime() : 0;
-      const bTime = bDate ? new Date(bDate).getTime() : 0;
-      return bTime - aTime;
+    const latest = [...rows].sort((first, second) => {
+      const firstDate = this.readStringProp(first, DataViewService.REPORT_DATE_KEYS);
+      const secondDate = this.readStringProp(second, DataViewService.REPORT_DATE_KEYS);
+      const firstTime = firstDate ? new Date(firstDate).getTime() : 0;
+      const secondTime = secondDate ? new Date(secondDate).getTime() : 0;
+      return secondTime - firstTime;
     })[0];
-    const description = this.readStringProp(latest, ['description', 'Description', 'descricao']);
-    const createdAt = this.readStringProp(latest, [
-      'Created_At',
-      'created_At',
-      'created_at',
-      'createdAt',
-      'CreatedAt',
-      'createdIn',
-      'CreatedIn',
-      'createdOn',
-      'CreatedOn',
-      'date',
-      'Date'
-    ]);
 
+    const description = this.readStringProp(latest, DataViewService.REPORT_DESCRIPTION_KEYS);
+    const createdAt = this.readStringProp(latest, DataViewService.REPORT_DATE_KEYS);
     if (!createdAt) {
       return null;
     }
@@ -221,16 +193,17 @@ export class DataViewService {
       return [];
     }
 
-    const obj = response as Record<string, unknown>;
-    const possibleArrays = ['value', 'items', 'data'];
-    for (const key of possibleArrays) {
-      const maybeArray = obj[key];
-      if (Array.isArray(maybeArray)) {
-        return maybeArray.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object');
+    const responseObject = response as Record<string, unknown>;
+    for (const key of ['value', 'items', 'data']) {
+      const possibleArray = responseObject[key];
+      if (Array.isArray(possibleArray)) {
+        return possibleArray.filter(
+          (item): item is Record<string, unknown> => !!item && typeof item === 'object'
+        );
       }
     }
 
-    return [obj];
+    return [responseObject];
   }
 
   private readStringProp(source: Record<string, unknown>, keys: string[]): string {

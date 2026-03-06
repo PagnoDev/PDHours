@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { SquadMemberTableView } from '../../core/models/data-view.models';
@@ -23,19 +23,22 @@ export class SquadDetailsViewComponent implements OnInit {
   protected readonly startDate = signal(this.today);
   protected readonly endDate = signal(this.today);
   protected readonly hasRegisteredEmployees = signal(false);
+  protected readonly canFilterByDate = computed(
+    () => this.hasRegisteredEmployees() && !this.loading() && !this.hasError()
+  );
   protected readonly members = signal<SquadMemberTableView[]>([]);
   protected readonly totalHours = signal(0);
   protected readonly averageHoursPerDay = signal(0);
 
   ngOnInit(): void {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
-    if (!Number.isFinite(id) || id <= 0) {
+    const routeSquadId = Number(this.route.snapshot.paramMap.get('id'));
+    if (!this.isValidPositiveNumber(routeSquadId)) {
       this.hasError.set(true);
       this.loading.set(false);
       return;
     }
 
-    this.squadId.set(id);
+    this.squadId.set(routeSquadId);
     this.loadSquadContextAndDetails();
   }
 
@@ -65,13 +68,14 @@ export class SquadDetailsViewComponent implements OnInit {
   }
 
   protected applyDateFilter(): void {
-    if (!this.hasRegisteredEmployees()) {
+    if (!this.canFilterByDate()) {
       return;
     }
 
     if (!this.startDate() || !this.endDate()) {
       return;
     }
+
     if (this.startDate() > this.endDate()) {
       return;
     }
@@ -113,15 +117,15 @@ export class SquadDetailsViewComponent implements OnInit {
           return;
         }
 
-        const squad = squads.find((item) => item.id === this.squadId());
-        if (!squad) {
+        const currentSquad = squads.find((squad) => squad.id === this.squadId());
+        if (!currentSquad) {
           this.hasError.set(true);
           this.loading.set(false);
           return;
         }
 
-        this.squadName.set(squad.name || 'Nome da Squad');
-        const hasEmployees = squad.employeesCount > 0;
+        this.squadName.set(currentSquad.name || 'Nome da Squad');
+        const hasEmployees = currentSquad.employeesCount > 0;
         this.hasRegisteredEmployees.set(hasEmployees);
 
         if (!hasEmployees) {
@@ -179,5 +183,9 @@ export class SquadDetailsViewComponent implements OnInit {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private isValidPositiveNumber(value: number): boolean {
+    return Number.isFinite(value) && value > 0;
   }
 }

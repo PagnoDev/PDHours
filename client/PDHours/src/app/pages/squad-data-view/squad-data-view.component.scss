@@ -215,6 +215,8 @@ tbody td {
 
 .action-btn:disabled,
 .mini-btn:disabled {
-  opacity: 0.6;
+  background: #8f9fe2;
+  border-color: #8f9fe2;
+  color: #e9eeff;
   cursor: not-allowed;
 }

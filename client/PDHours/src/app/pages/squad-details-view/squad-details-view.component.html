@@ -11,7 +11,7 @@
           <button
             type="button"
             class="date-trigger"
-            [disabled]="!hasRegisteredEmployees()"
+            [disabled]="!canFilterByDate()"
             (click)="openDatePicker(startInput)"
             aria-label="Abrir calendario de inicio"
           >
@@ -21,7 +21,7 @@
             #startInput
             type="date"
             [value]="startDate()"
-            [disabled]="!hasRegisteredEmployees()"
+            [disabled]="!canFilterByDate()"
             (input)="onStartDateChange($event)"
           />
         </div>
@@ -32,7 +32,7 @@
           <button
             type="button"
             class="date-trigger"
-            [disabled]="!hasRegisteredEmployees()"
+            [disabled]="!canFilterByDate()"
             (click)="openDatePicker(endInput)"
             aria-label="Abrir calendario de fim"
           >
@@ -42,7 +42,7 @@
             #endInput
             type="date"
             [value]="endDate()"
-            [disabled]="!hasRegisteredEmployees()"
+            [disabled]="!canFilterByDate()"
             (input)="onEndDateChange($event)"
           />
         </div>
@@ -50,7 +50,7 @@
       <button
         type="button"
         class="filter-btn"
-        [disabled]="!hasRegisteredEmployees()"
+        [disabled]="!canFilterByDate()"
         (click)="applyDateFilter()"
       >
         Filtrar por data

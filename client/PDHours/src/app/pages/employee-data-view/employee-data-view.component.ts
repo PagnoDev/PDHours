@@ -1,9 +1,9 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
-import { DataViewService } from '../../core/services/data-view.service';
 import { EmployeeTableView } from '../../core/models/data-view.models';
+import { DataViewService } from '../../core/services/data-view.service';
 
 @Component({
   selector: 'app-employee-data-view',
@@ -14,10 +14,15 @@ import { EmployeeTableView } from '../../core/models/data-view.models';
 export class EmployeeDataViewComponent implements OnInit {
   private readonly dataViewService = inject(DataViewService);
 
+  private static readonly SQUAD_NOT_FOUND_MESSAGE = 'nao existe squad com este id';
+  private static readonly CREATE_EMPLOYEE_ERROR = 'Nao foi possivel criar o usuario.';
+  private static readonly CREATE_SQUAD_ERROR = 'Nao foi possivel criar a squad.';
+
   protected readonly loading = signal(true);
   protected readonly employees = signal<EmployeeTableView[]>([]);
   protected readonly hasError = signal(false);
   protected readonly hasNoSquads = signal(false);
+
   protected readonly createModalOpen = signal(false);
   protected readonly createSubmitting = signal(false);
   protected readonly createTouched = signal(false);
@@ -25,7 +30,8 @@ export class EmployeeDataViewComponent implements OnInit {
   protected readonly createEstimatedHours = signal('');
   protected readonly createSquadId = signal('');
   protected readonly createErrorMessage = signal('');
-  protected readonly squadFieldError = signal(false);
+  protected readonly squadValidationMessage = signal('');
+
   protected readonly createSquadModalOpen = signal(false);
   protected readonly createSquadSubmitting = signal(false);
   protected readonly createSquadTouched = signal(false);
@@ -42,15 +48,7 @@ export class EmployeeDataViewComponent implements OnInit {
 
   protected openCreateModal(): void {
     this.createModalOpen.set(true);
-    this.createSubmitting.set(false);
-    this.createTouched.set(false);
-    this.createUserName.set('');
-    this.createEstimatedHours.set('');
-    this.createSquadId.set('');
-    this.createErrorMessage.set('');
-    this.squadFieldError.set(false);
-    this.userNameInvalid.set(false);
-    this.estimatedHoursInvalid.set(false);
+    this.resetCreateEmployeeFormState();
   }
 
   protected closeCreateModal(): void {
@@ -63,11 +61,7 @@ export class EmployeeDataViewComponent implements OnInit {
 
   protected openCreateSquadModal(): void {
     this.createSquadModalOpen.set(true);
-    this.createSquadSubmitting.set(false);
-    this.createSquadTouched.set(false);
-    this.createSquadName.set('');
-    this.createSquadErrorMessage.set('');
-    this.createSquadNameInvalid.set(false);
+    this.resetCreateSquadFormState();
   }
 
   protected closeCreateSquadModal(): void {
@@ -76,50 +70,6 @@ export class EmployeeDataViewComponent implements OnInit {
     }
 
     this.createSquadModalOpen.set(false);
-  }
-
-  protected onCreateSquadNameInput(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.createSquadName.set(input.value);
-    this.createSquadNameInvalid.set(false);
-    if (this.createSquadErrorMessage()) {
-      this.createSquadErrorMessage.set('');
-    }
-  }
-
-  protected submitCreateSquad(): void {
-    this.createSquadTouched.set(true);
-
-    const name = this.createSquadName().trim();
-    const invalidName = name.length === 0;
-    this.createSquadNameInvalid.set(invalidName);
-
-    if (invalidName) {
-      return;
-    }
-
-    this.createSquadSubmitting.set(true);
-    this.createSquadErrorMessage.set('');
-
-    this.dataViewService
-      .createSquad({ name })
-      .pipe(
-        catchError(() => {
-          this.createSquadErrorMessage.set('Nao foi possivel criar a squad.');
-          return of(void 0);
-        }),
-        finalize(() => {
-          this.createSquadSubmitting.set(false);
-        })
-      )
-      .subscribe(() => {
-        if (this.createSquadErrorMessage()) {
-          return;
-        }
-
-        this.createSquadModalOpen.set(false);
-        this.loadEmployees();
-      });
   }
 
   protected closeCreateErrorBanner(): void {
@@ -141,9 +91,16 @@ export class EmployeeDataViewComponent implements OnInit {
   protected onCreateSquadIdInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.createSquadId.set(input.value);
-    this.squadFieldError.set(false);
-    if (this.createErrorMessage()) {
-      this.createErrorMessage.set('');
+    this.squadValidationMessage.set('');
+    this.clearCreateEmployeeErrorMessage();
+  }
+
+  protected onCreateSquadNameInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.createSquadName.set(input.value);
+    this.createSquadNameInvalid.set(false);
+    if (this.createSquadErrorMessage()) {
+      this.createSquadErrorMessage.set('');
     }
   }
 
@@ -152,17 +109,24 @@ export class EmployeeDataViewComponent implements OnInit {
 
     const name = this.createUserName().trim();
     const estimateHours = Number(this.createEstimatedHours());
-    const squadId = Number(this.createSquadId());
+    const squadIdRaw = this.createSquadId().trim();
+    const squadId = Number(squadIdRaw);
 
-    const invalidName = name.length === 0;
-    const invalidHours = !Number.isFinite(estimateHours) || estimateHours <= 0;
-    const invalidSquadId = !Number.isFinite(squadId) || squadId <= 0;
+    const hasInvalidName = name.length === 0;
+    const hasInvalidHours = !Number.isFinite(estimateHours) || estimateHours <= 0;
+    const hasMissingSquadId = squadIdRaw.length === 0;
+    const hasInvalidSquadId = !hasMissingSquadId && (!Number.isFinite(squadId) || squadId <= 0);
 
-    this.userNameInvalid.set(invalidName);
-    this.estimatedHoursInvalid.set(invalidHours);
-    this.squadFieldError.set(invalidSquadId);
+    this.userNameInvalid.set(hasInvalidName);
+    this.estimatedHoursInvalid.set(hasInvalidHours);
+    this.squadValidationMessage.set('');
+    if (hasMissingSquadId) {
+      this.squadValidationMessage.set('O id da squad e obrigatorio.');
+    } else if (hasInvalidSquadId) {
+      this.squadValidationMessage.set('O id da squad deve ser maior que 0.');
+    }
 
-    if (invalidName || invalidHours || invalidSquadId) {
+    if (hasInvalidName || hasInvalidHours || hasMissingSquadId || hasInvalidSquadId) {
       return;
     }
 
@@ -170,24 +134,10 @@ export class EmployeeDataViewComponent implements OnInit {
     this.createErrorMessage.set('');
 
     this.dataViewService
-      .createEmployee({
-        name,
-        estimateHours,
-        squadId
-      })
+      .createEmployee({ name, estimateHours, squadId })
       .pipe(
         catchError((error: HttpErrorResponse) => {
-          const apiMessage = this.readApiErrorMessage(error);
-          const squadNotFound =
-            this.isSquadNotFoundError(apiMessage) || error.status === 404 || error.status === 400;
-
-          if (squadNotFound) {
-            this.createErrorMessage.set('nao existe squad com este id');
-            this.squadFieldError.set(true);
-          } else {
-            this.createErrorMessage.set(apiMessage || 'Nao foi possivel criar o usuario.');
-          }
-
+          this.handleCreateEmployeeError(error);
           return of(void 0);
         }),
         finalize(() => {
@@ -195,12 +145,43 @@ export class EmployeeDataViewComponent implements OnInit {
         })
       )
       .subscribe(() => {
-        if (this.createErrorMessage()) {
-          return;
+        if (!this.createErrorMessage()) {
+          this.createModalOpen.set(false);
+          this.loadEmployees();
         }
+      });
+  }
 
-        this.createModalOpen.set(false);
-        this.loadEmployees();
+  protected submitCreateSquad(): void {
+    this.createSquadTouched.set(true);
+
+    const name = this.createSquadName().trim();
+    const hasInvalidName = name.length === 0;
+    this.createSquadNameInvalid.set(hasInvalidName);
+
+    if (hasInvalidName) {
+      return;
+    }
+
+    this.createSquadSubmitting.set(true);
+    this.createSquadErrorMessage.set('');
+
+    this.dataViewService
+      .createSquad({ name })
+      .pipe(
+        catchError(() => {
+          this.createSquadErrorMessage.set(EmployeeDataViewComponent.CREATE_SQUAD_ERROR);
+          return of(void 0);
+        }),
+        finalize(() => {
+          this.createSquadSubmitting.set(false);
+        })
+      )
+      .subscribe(() => {
+        if (!this.createSquadErrorMessage()) {
+          this.createSquadModalOpen.set(false);
+          this.loadEmployees();
+        }
       });
   }
 
@@ -219,10 +200,50 @@ export class EmployeeDataViewComponent implements OnInit {
         })
       )
       .subscribe(({ squads, employees }) => {
-        this.hasError.set(squads.length === 0 && employees.length === 0);
         this.hasNoSquads.set(squads.length === 0);
+        this.hasError.set(squads.length === 0 && employees.length === 0);
         this.employees.set(employees);
       });
+  }
+
+  private resetCreateEmployeeFormState(): void {
+    this.createSubmitting.set(false);
+    this.createTouched.set(false);
+    this.createUserName.set('');
+    this.createEstimatedHours.set('');
+    this.createSquadId.set('');
+    this.createErrorMessage.set('');
+    this.squadValidationMessage.set('');
+    this.userNameInvalid.set(false);
+    this.estimatedHoursInvalid.set(false);
+  }
+
+  private resetCreateSquadFormState(): void {
+    this.createSquadSubmitting.set(false);
+    this.createSquadTouched.set(false);
+    this.createSquadName.set('');
+    this.createSquadErrorMessage.set('');
+    this.createSquadNameInvalid.set(false);
+  }
+
+  private clearCreateEmployeeErrorMessage(): void {
+    if (this.createErrorMessage()) {
+      this.createErrorMessage.set('');
+    }
+  }
+
+  private handleCreateEmployeeError(error: HttpErrorResponse): void {
+    const errorMessage = this.readApiErrorMessage(error);
+    const squadNotFoundError =
+      this.isSquadNotFoundError(errorMessage) || error.status === 404 || error.status === 400;
+
+    if (squadNotFoundError) {
+      this.createErrorMessage.set(EmployeeDataViewComponent.SQUAD_NOT_FOUND_MESSAGE);
+      this.squadValidationMessage.set('Nao existe squad com este id.');
+      return;
+    }
+
+    this.createErrorMessage.set(errorMessage || EmployeeDataViewComponent.CREATE_EMPLOYEE_ERROR);
   }
 
   private readApiErrorMessage(error: HttpErrorResponse): string {
@@ -242,13 +263,12 @@ export class EmployeeDataViewComponent implements OnInit {
   }
 
   private isSquadNotFoundError(message: string): boolean {
-    const normalized = message.toLowerCase();
+    const normalizedMessage = message.toLowerCase();
     return (
-      normalized.includes('squad') &&
-      (normalized.includes('nao existe') ||
-        normalized.includes('não existe') ||
-        normalized.includes('not found') ||
-        normalized.includes('does not exist'))
+      normalizedMessage.includes('squad') &&
+      (normalizedMessage.includes('nao existe') ||
+        normalizedMessage.includes('not found') ||
+        normalizedMessage.includes('does not exist'))
     );
   }
 }

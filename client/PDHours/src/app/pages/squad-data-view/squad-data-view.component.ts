@@ -13,6 +13,7 @@ import { DataViewService } from '../../core/services/data-view.service';
 })
 export class SquadDataViewComponent implements OnInit {
   private readonly dataViewService = inject(DataViewService);
+  private static readonly CREATE_SQUAD_ERROR = 'Nao foi possivel criar o squad. Tente novamente.';
 
   protected readonly loading = signal(true);
   protected readonly squads = signal<SquadTableView[]>([]);
@@ -34,9 +35,7 @@ export class SquadDataViewComponent implements OnInit {
 
   protected openCreateModal(): void {
     this.createModalOpen.set(true);
-    this.squadName.set('');
-    this.createTouched.set(false);
-    this.createErrorMessage.set('');
+    this.resetCreateFormState();
   }
 
   protected closeCreateModal(): void {
@@ -71,7 +70,7 @@ export class SquadDataViewComponent implements OnInit {
       .createSquad({ name })
       .pipe(
         catchError(() => {
-          this.createErrorMessage.set('Nao foi possivel criar o squad. Tente novamente.');
+          this.createErrorMessage.set(SquadDataViewComponent.CREATE_SQUAD_ERROR);
           return of(void 0);
         }),
         finalize(() => {
@@ -106,5 +105,11 @@ export class SquadDataViewComponent implements OnInit {
       .subscribe((squads) => {
         this.squads.set(squads);
       });
+  }
+
+  private resetCreateFormState(): void {
+    this.squadName.set('');
+    this.createTouched.set(false);
+    this.createErrorMessage.set('');
   }
 }

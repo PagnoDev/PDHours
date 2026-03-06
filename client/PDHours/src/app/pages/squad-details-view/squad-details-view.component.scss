@@ -103,6 +103,13 @@
   font-weight: 500;
 }
 
+.filter-btn:disabled {
+  background: #8f9fe2;
+  border-color: #8f9fe2;
+  color: #e9eeff;
+  cursor: not-allowed;
+}
+
 .state-card {
   text-align: center;
   margin-top: 20px;

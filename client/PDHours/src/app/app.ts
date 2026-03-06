@@ -15,6 +15,9 @@ import { DataViewService } from './core/services/data-view.service';
 export class App {
   private readonly dataViewService = inject(DataViewService);
 
+  private static readonly USER_NOT_FOUND_ERROR = 'Nao existe usuario com este id';
+  private static readonly REPORT_CREATE_ERROR = 'Nao foi possivel criar o lancamento.';
+
   protected readonly reportModalOpen = signal(false);
   protected readonly reportSubmitting = signal(false);
   protected readonly reportEmployeeId = signal('');
@@ -29,15 +32,7 @@ export class App {
 
   protected openReportModal(): void {
     this.reportModalOpen.set(true);
-    this.reportSubmitting.set(false);
-    this.reportEmployeeId.set('');
-    this.reportSpentHours.set('');
-    this.reportDescription.set('');
-    this.reportErrorMessage.set('');
-    this.reportUserFieldError.set(false);
-    this.employeeIdInvalid.set(false);
-    this.spentHoursInvalid.set(false);
-    this.descriptionInvalid.set(false);
+    this.resetReportFormState();
   }
 
   protected closeReportModal(): void {
@@ -57,9 +52,7 @@ export class App {
     this.reportEmployeeId.set(input.value);
     this.employeeIdInvalid.set(false);
     this.reportUserFieldError.set(false);
-    if (this.reportErrorMessage()) {
-      this.reportErrorMessage.set('');
-    }
+    this.clearReportErrorMessage();
   }
 
   protected onReportSpentHoursInput(event: Event): void {
@@ -79,41 +72,27 @@ export class App {
     const spentHours = Number(this.reportSpentHours());
     const description = this.reportDescription().trim();
 
-    const invalidEmployeeId = !Number.isFinite(employeeId) || employeeId <= 0;
-    const invalidSpentHours = !Number.isFinite(spentHours) || spentHours <= 0;
-    const invalidDescription = description.length === 0;
+    const hasInvalidEmployeeId = !Number.isFinite(employeeId) || employeeId <= 0;
+    const hasInvalidSpentHours = !Number.isFinite(spentHours) || spentHours <= 0;
+    const hasInvalidDescription = description.length === 0;
 
-    this.employeeIdInvalid.set(invalidEmployeeId);
-    this.spentHoursInvalid.set(invalidSpentHours);
-    this.descriptionInvalid.set(invalidDescription);
+    this.employeeIdInvalid.set(hasInvalidEmployeeId);
+    this.spentHoursInvalid.set(hasInvalidSpentHours);
+    this.descriptionInvalid.set(hasInvalidDescription);
 
-    if (invalidEmployeeId || invalidSpentHours || invalidDescription) {
+    if (hasInvalidEmployeeId || hasInvalidSpentHours || hasInvalidDescription) {
       return;
     }
 
     this.reportSubmitting.set(true);
-    this.reportErrorMessage.set('');
     this.reportUserFieldError.set(false);
+    this.reportErrorMessage.set('');
 
     this.dataViewService
       .createReport({ description, employeeId, spentHours })
       .pipe(
         catchError((error: HttpErrorResponse) => {
-          const message = this.readApiErrorMessage(error);
-          const userNotFound =
-            message.toLowerCase().includes('usuario') ||
-            message.toLowerCase().includes('usuário') ||
-            message.toLowerCase().includes('user') ||
-            error.status === 404 ||
-            error.status === 400;
-
-          if (userNotFound) {
-            this.reportErrorMessage.set('Não existe usuário com este id');
-            this.reportUserFieldError.set(true);
-          } else {
-            this.reportErrorMessage.set(message || 'Não foi possível criar o lançamento.');
-          }
-
+          this.handleCreateReportError(error);
           return of(void 0);
         }),
         finalize(() => {
@@ -121,12 +100,42 @@ export class App {
         })
       )
       .subscribe(() => {
-        if (this.reportErrorMessage()) {
-          return;
+        if (!this.reportErrorMessage()) {
+          this.reportModalOpen.set(false);
         }
-
-        this.reportModalOpen.set(false);
       });
+  }
+
+  private resetReportFormState(): void {
+    this.reportSubmitting.set(false);
+    this.reportEmployeeId.set('');
+    this.reportSpentHours.set('');
+    this.reportDescription.set('');
+    this.reportErrorMessage.set('');
+    this.reportUserFieldError.set(false);
+    this.employeeIdInvalid.set(false);
+    this.spentHoursInvalid.set(false);
+    this.descriptionInvalid.set(false);
+  }
+
+  private clearReportErrorMessage(): void {
+    if (this.reportErrorMessage()) {
+      this.reportErrorMessage.set('');
+    }
+  }
+
+  private handleCreateReportError(error: HttpErrorResponse): void {
+    const errorMessage = this.readApiErrorMessage(error);
+    const isUserNotFoundError =
+      this.isUserNotFoundError(errorMessage) || error.status === 404 || error.status === 400;
+
+    if (isUserNotFoundError) {
+      this.reportErrorMessage.set(App.USER_NOT_FOUND_ERROR);
+      this.reportUserFieldError.set(true);
+      return;
+    }
+
+    this.reportErrorMessage.set(errorMessage || App.REPORT_CREATE_ERROR);
   }
 
   private readApiErrorMessage(error: HttpErrorResponse): string {
@@ -143,5 +152,10 @@ export class App {
     }
 
     return '';
+  }
+
+  private isUserNotFoundError(message: string): boolean {
+    const normalizedMessage = message.toLowerCase();
+    return normalizedMessage.includes('usuario') || normalizedMessage.includes('user');
   }
 }

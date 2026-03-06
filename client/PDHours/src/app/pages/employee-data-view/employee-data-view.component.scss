@@ -283,7 +283,13 @@ tbody td {
   font-size: var(--font-size-h4);
 }
 
-.action-btn:disabled,
+.action-btn:disabled {
+  background: #8f9fe2;
+  border-color: #8f9fe2;
+  color: #e9eeff;
+  cursor: not-allowed;
+}
+
 .close-banner-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
