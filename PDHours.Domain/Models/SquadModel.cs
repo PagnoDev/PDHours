@@ -8,6 +8,7 @@ namespace PDHours.Domain.Models
         [Key]
         public int Id { get; set; }
         public required string Name { get; set; }
+
         public List<EmployeeModel>? Employees { get; set; }
     }
 }

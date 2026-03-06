@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace PDHours.Domain.Models
@@ -13,7 +10,7 @@ namespace PDHours.Domain.Models
         public required string Description { get; set; }
         public required int EmployeeId { get; set; }
         public int SpentHours { get; set; }
-        public DateTime Created_At { get; set; } = DateTime.Now;
+        public DateTime Created_At { get; set; }
 
         [JsonIgnore]
         public EmployeeModel? Employee { get; set; }
