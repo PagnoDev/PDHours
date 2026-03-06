@@ -65,10 +65,6 @@ namespace PDHours.API.Controllers
         /// <summary>
         /// /MemberDetails?id=1&startDate=2024-01-01&endDate=2024-12-31
         /// </summary>
-        /// <param name="id"></param>
-        /// <param name="startDate"></param>
-        /// <param name="endDate"></param>
-        /// <returns></returns>
         [HttpGet("MemberDetails")]
         public async Task<IActionResult> GetTotalHourByMember(int id, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
         {
@@ -94,19 +90,5 @@ namespace PDHours.API.Controllers
 
             return Created();
         }
-
-
-        /*
-         * 4. Criar uma rota que retorne as horas gastas de cada membro de uma determinada squad em um determinado período (Parâmetros: squadId e período - pode considerar dias corridos).
-         *  Detalhes: A resposta deve conter o nome do membro e a quantidade total de horas gastas por ele naquele período.
-         *  
-         * 5. Criar uma rota que retorne o tempo total gasto de uma squad em um determinado período, ou seja, a quantidade total de horas realizadas pelos membros daquela squad 
-         * (Parâmetros: squadId e período - pode considerar dias corridos).
-         *  Detalhes: A resposta deve conter o nome da squad e a quantidade total de horas gastas por ela naquele período.
-         *  
-         * 6. Criar uma rota que retorne a média gasta de hora por dia de uma squad em um determinado período. 
-         * (Parâmetros: squadId e período - pode considerar dias corridos).
-         *  Detalhes: A resposta deve conter o nome da squad e a média de horas gastas por dia por ela naquele período.
-         */
     }
 }

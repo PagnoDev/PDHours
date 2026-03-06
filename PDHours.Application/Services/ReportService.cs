@@ -8,10 +8,24 @@ namespace PDHours.Application.Services
     public class ReportService : BaseService<ReportModel>, IReportService
     {
         private readonly IReportRepository _repository;
+        private readonly IEmployeeRepository _employeeRepository;
 
-        public ReportService(IReportRepository repository) : base(repository)
+        public ReportService(IReportRepository repository, IEmployeeRepository employeeRepository) : base(repository)
         {
             _repository = repository;
+            _employeeRepository = employeeRepository;
+        }
+
+        public new void Add(ReportModel entity)
+        {
+            var employee = _employeeRepository.GetById(entity.EmployeeId);
+
+            if (employee == null)
+            {
+                throw new InvalidOperationException($"Employee com ID {entity.EmployeeId} não existe.");
+            }
+
+            base.Add(entity);
         }
     }
 }

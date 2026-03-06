@@ -20,18 +20,25 @@ namespace PDHours.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateReport([FromBody] CreateReportDTO reportDTO)
         {
-            ReportModel newReport = new()
+            try
             {
-                Description = reportDTO.Description,
-                EmployeeId = reportDTO.EmployeeId,
-                SpentHours = reportDTO.SpentHours
-            };
+                ReportModel newReport = new()
+                {
+                    Description = reportDTO.Description,
+                    EmployeeId = reportDTO.EmployeeId,
+                    SpentHours = reportDTO.SpentHours
+                };
 
-            _service.Add(newReport);
+                _service.Add(newReport);
 
-            Console.WriteLine(newReport);
+                Console.WriteLine(newReport);
 
-            return Created();
+                return Created();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }
