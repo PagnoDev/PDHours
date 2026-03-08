@@ -3,7 +3,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { SquadMemberTableView } from '../../core/models/data-view.models';
-import { DataViewService } from '../../core/services/data-view.service';
+import { SquadDetailsService } from '../../core/services/squad-details.service';
+import { SquadService } from '../../core/services/squad.service';
 
 @Component({
   selector: 'app-squad-details-view',
@@ -13,7 +14,8 @@ import { DataViewService } from '../../core/services/data-view.service';
 })
 export class SquadDetailsViewComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly dataViewService = inject(DataViewService);
+  private readonly squadService = inject(SquadService);
+  private readonly squadDetailsService = inject(SquadDetailsService);
   private readonly today = this.toDateInputValue(new Date());
 
   protected readonly loading = signal(true);
@@ -103,7 +105,7 @@ export class SquadDetailsViewComponent implements OnInit {
     this.loading.set(true);
     this.hasError.set(false);
 
-    this.dataViewService
+    this.squadService
       .getSquadTableView()
       .pipe(
         catchError(() => {
@@ -145,16 +147,16 @@ export class SquadDetailsViewComponent implements OnInit {
     this.hasError.set(false);
 
     forkJoin({
-      members: this.dataViewService.getSquadMemberTableView(
+      members: this.squadDetailsService.getSquadMemberTableView(
         this.squadId(),
         this.startDate(),
         this.endDate()
       ),
-      total: this.dataViewService.getSquadTotalHours(
+      total: this.squadDetailsService.getSquadTotalHours(
         this.squadId(),
         this.startDate(),
         this.endDate()),
-      average: this.dataViewService.getSquadDailyAverage(
+      average: this.squadDetailsService.getSquadDailyAverage(
         this.squadId(),
         this.startDate(),
         this.endDate()

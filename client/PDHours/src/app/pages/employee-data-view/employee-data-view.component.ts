@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { EmployeeTableView } from '../../core/models/data-view.models';
-import { DataViewService } from '../../core/services/data-view.service';
+import { EmployeeService } from '../../core/services/employee.service';
+import { SquadService } from '../../core/services/squad.service';
 
 @Component({
   selector: 'app-employee-data-view',
@@ -12,7 +13,8 @@ import { DataViewService } from '../../core/services/data-view.service';
   styleUrl: './employee-data-view.component.scss'
 })
 export class EmployeeDataViewComponent implements OnInit {
-  private readonly dataViewService = inject(DataViewService);
+  private readonly employeeService = inject(EmployeeService);
+  private readonly squadService = inject(SquadService);
 
   private static readonly SQUAD_NOT_FOUND_MESSAGE = 'nao existe squad com este id';
   private static readonly CREATE_EMPLOYEE_ERROR = 'Nao foi possivel criar o usuario.';
@@ -133,7 +135,7 @@ export class EmployeeDataViewComponent implements OnInit {
     this.createSubmitting.set(true);
     this.createErrorMessage.set('');
 
-    this.dataViewService
+    this.employeeService
       .createEmployee({ name, estimateHours, squadId })
       .pipe(
         catchError((error: HttpErrorResponse) => {
@@ -166,7 +168,7 @@ export class EmployeeDataViewComponent implements OnInit {
     this.createSquadSubmitting.set(true);
     this.createSquadErrorMessage.set('');
 
-    this.dataViewService
+    this.squadService
       .createSquad({ name })
       .pipe(
         catchError(() => {
@@ -191,8 +193,8 @@ export class EmployeeDataViewComponent implements OnInit {
     this.hasNoSquads.set(false);
 
     forkJoin({
-      squads: this.dataViewService.getSquadsList().pipe(catchError(() => of([]))),
-      employees: this.dataViewService.getEmployeeTableView().pipe(catchError(() => of([])))
+      squads: this.squadService.getSquadsList().pipe(catchError(() => of([]))),
+      employees: this.employeeService.getEmployeeTableView().pipe(catchError(() => of([])))
     })
       .pipe(
         finalize(() => {

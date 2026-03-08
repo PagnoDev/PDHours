@@ -3,7 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, finalize, of } from 'rxjs';
 import { SquadTableView } from '../../core/models/data-view.models';
-import { DataViewService } from '../../core/services/data-view.service';
+import { SquadService } from '../../core/services/squad.service';
 
 @Component({
   selector: 'app-squad-data-view',
@@ -12,7 +12,7 @@ import { DataViewService } from '../../core/services/data-view.service';
   styleUrl: './squad-data-view.component.scss'
 })
 export class SquadDataViewComponent implements OnInit {
-  private readonly dataViewService = inject(DataViewService);
+  private readonly squadService = inject(SquadService);
   private static readonly CREATE_SQUAD_ERROR = 'Nao foi possivel criar o squad. Tente novamente.';
 
   protected readonly loading = signal(true);
@@ -66,7 +66,7 @@ export class SquadDataViewComponent implements OnInit {
     this.createSubmitting.set(true);
     this.createErrorMessage.set('');
 
-    this.dataViewService
+    this.squadService
       .createSquad({ name })
       .pipe(
         catchError(() => {
@@ -91,7 +91,7 @@ export class SquadDataViewComponent implements OnInit {
     this.loading.set(true);
     this.hasError.set(false);
 
-    this.dataViewService
+    this.squadService
       .getSquadTableView()
       .pipe(
         catchError(() => {

@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { catchError, finalize, of } from 'rxjs';
-import { DataViewService } from './core/services/data-view.service';
+import { ReportService } from './core/services/report.service';
 
 @Component({
   selector: 'app-root',
@@ -13,7 +13,7 @@ import { DataViewService } from './core/services/data-view.service';
   styleUrl: './app.scss'
 })
 export class App {
-  private readonly dataViewService = inject(DataViewService);
+  private readonly reportService = inject(ReportService);
 
   private static readonly USER_NOT_FOUND_ERROR = 'Nao existe usuario com este id';
   private static readonly REPORT_CREATE_ERROR = 'Nao foi possivel criar o lancamento.';
@@ -88,7 +88,7 @@ export class App {
     this.reportUserFieldError.set(false);
     this.reportErrorMessage.set('');
 
-    this.dataViewService
+    this.reportService
       .createReport({ description, employeeId, spentHours })
       .pipe(
         catchError((error: HttpErrorResponse) => {

@@ -2,100 +2,17 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import {
-  CreateEmployeeRequestDto,
-  CreateReportRequestDto,
-  CreateSquadRequestDto,
   EmployeeLatestReportDto,
-  EmployeeListDto,
-  EmployeeTableView,
   SquadDailyAverageDto,
-  SquadListDto,
   SquadMemberDetailsDto,
   SquadMemberTableView,
-  SquadTableView,
   SquadTotalHoursDto
 } from '../models/data-view.models';
 
 @Injectable({ providedIn: 'root' })
-export class DataViewService {
+export class SquadDetailsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = 'https://localhost:7185';
-
-  private static readonly REPORT_DESCRIPTION_KEYS = ['description', 'Description', 'descricao'];
-  private static readonly REPORT_DATE_KEYS = [
-    'Created_At',
-    'created_At',
-    'created_at',
-    'createdAt',
-    'CreatedAt',
-    'createdIn',
-    'CreatedIn',
-    'createdOn',
-    'CreatedOn',
-    'date',
-    'Date'
-  ];
-
-  getEmployeeTableView(): Observable<EmployeeTableView[]> {
-    return forkJoin({
-      employees: this.getEmployeesDto(),
-      squads: this.getSquadsDto()
-    }).pipe(
-      map(({ employees, squads }) => {
-        const squadsById = new Map<number, string>();
-        for (const squad of squads) {
-          squadsById.set(squad.id, squad.name);
-        }
-
-        return employees.map((employee) => ({
-          name: employee.name,
-          estimateHours: employee.estimateHours,
-          squadId: employee.squadId,
-          squadName: squadsById.get(employee.squadId) ?? `Squad ${employee.squadId}`
-        }));
-      })
-    );
-  }
-
-  getSquadTableView(): Observable<SquadTableView[]> {
-    return forkJoin({
-      squads: this.getSquadsDto(),
-      employees: this.getEmployeesDto().pipe(catchError(() => of([] as EmployeeListDto[])))
-    }).pipe(
-      map(({ squads, employees }) =>
-        squads.map((squad) => {
-          const employeesBySquad = employees.filter((employee) => employee.squadId === squad.id);
-          const totalEstimateHours = employeesBySquad.reduce(
-            (total, employee) => total + employee.estimateHours,
-            0
-          );
-
-          return {
-            id: squad.id,
-            name: squad.name,
-            employeesCount: employeesBySquad.length,
-            totalEstimateHours
-          };
-        })
-      )
-    );
-  }
-
-  getSquadsList(): Observable<SquadListDto[]> {
-    return this.getSquadsDto();
-  }
-
-  createSquad(request: CreateSquadRequestDto): Observable<void> {
-    return this.http.post<void>(`${this.apiBaseUrl}/Squad`, request);
-  }
-
-  createEmployee(request: CreateEmployeeRequestDto): Observable<void> {
-    return this.http.post<void>(`${this.apiBaseUrl}/Employee`, request);
-  }
-
-  createReport(request: CreateReportRequestDto): Observable<void> {
-    return this.http.post<void>(`${this.apiBaseUrl}/Report`, request);
-  }
 
   getSquadMemberDetails(
     id: number,
@@ -108,10 +25,16 @@ export class DataViewService {
   }
 
   getSquadTotalHours(id: number, startDate: string, endDate: string): Observable<SquadTotalHoursDto> {
-    return this.http.get<SquadTotalHoursDto>(`${this.apiBaseUrl}/Squad/MemberReportsTotalHours?id=${id}&startDate=${startDate}&endDate=${endDate}`);
+    return this.http.get<SquadTotalHoursDto>(
+      `${this.apiBaseUrl}/Squad/MemberReportsTotalHours?id=${id}&startDate=${startDate}&endDate=${endDate}`
+    );
   }
 
-  getSquadDailyAverage(id: number, startDate: string, endDate: string): Observable<SquadDailyAverageDto> {
+  getSquadDailyAverage(
+    id: number,
+    startDate: string,
+    endDate: string
+  ): Observable<SquadDailyAverageDto> {
     return this.http.get<SquadDailyAverageDto>(
       `${this.apiBaseUrl}/Squad/DailyAverage?id=${id}&startDate=${startDate}&endDate=${endDate}`
     );
@@ -145,7 +68,7 @@ export class DataViewService {
     );
   }
 
-  getEmployeeLatestReport(
+  private getEmployeeLatestReport(
     employeeId: number,
     startDate: string,
     endDate: string
@@ -170,8 +93,8 @@ export class DataViewService {
     const startRangeTime = new Date(`${startDate}T00:00:00`).getTime();
     const endRangeTime = new Date(`${endDate}T23:59:59`).getTime();
     const rows = this.extractRows(response).filter((row) => {
-      const dateValue = this.readStringProp(row, DataViewService.REPORT_DATE_KEYS);
-      if (!dateValue) {
+      const dateValue = row['Created_At'];
+      if (typeof dateValue !== 'string' || dateValue.trim().length === 0) {
         return false;
       }
 
@@ -188,15 +111,15 @@ export class DataViewService {
     }
 
     const latest = [...rows].sort((first, second) => {
-      const firstDate = this.readStringProp(first, DataViewService.REPORT_DATE_KEYS);
-      const secondDate = this.readStringProp(second, DataViewService.REPORT_DATE_KEYS);
+      const firstDate = typeof first['Created_At'] === 'string' ? first['Created_At'] : '';
+      const secondDate = typeof second['Created_At'] === 'string' ? second['Created_At'] : '';
       const firstTime = firstDate ? new Date(firstDate).getTime() : 0;
       const secondTime = secondDate ? new Date(secondDate).getTime() : 0;
       return secondTime - firstTime;
     })[0];
 
-    const description = this.readStringProp(latest, DataViewService.REPORT_DESCRIPTION_KEYS);
-    const createdAt = this.readStringProp(latest, DataViewService.REPORT_DATE_KEYS);
+    const description = typeof latest['Description'] === 'string' ? latest['Description'] : '';
+    const createdAt = typeof latest['Created_At'] === 'string' ? latest['Created_At'] : '';
     if (!createdAt) {
       return null;
     }
@@ -207,6 +130,12 @@ export class DataViewService {
     };
   }
 
+  /**
+   * Caso o filtro do OData seja alterado, a estrutura da resposta possa variar, então esse método tenta extrair os dados de forma resiliente.
+   * Ele procura por arrays diretamente na resposta ou dentro de propriedades comuns como 'value', 'items' ou 'data'. Se não encontrar, tenta tratar a resposta como um único objeto.
+   * Além disso, ele garante que os itens extraídos sejam objetos válidos, filtrando valores nulos ou de tipos inesperados.
+   * Caso alguém altere o filtro do OData e a resposta deixe de conter os dados esperados, o método ainda tentará extrair o máximo de informações possível, retornando um array vazio ou um objeto único conforme o caso, ao invés de lançar erros.
+   */
   private extractRows(response: unknown): Record<string, unknown>[] {
     if (Array.isArray(response)) {
       return response.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object');
@@ -227,24 +156,5 @@ export class DataViewService {
     }
 
     return [responseObject];
-  }
-
-  private readStringProp(source: Record<string, unknown>, keys: string[]): string {
-    for (const key of keys) {
-      const value = source[key];
-      if (typeof value === 'string' && value.trim().length > 0) {
-        return value;
-      }
-    }
-
-    return '';
-  }
-
-  private getEmployeesDto(): Observable<EmployeeListDto[]> {
-    return this.http.get<EmployeeListDto[]>(`${this.apiBaseUrl}/EmployeeDataView`);
-  }
-
-  private getSquadsDto(): Observable<SquadListDto[]> {
-    return this.http.get<SquadListDto[]>(`${this.apiBaseUrl}/Squad/DataView`);
   }
 }

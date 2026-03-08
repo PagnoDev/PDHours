@@ -24,7 +24,7 @@ namespace PDHours.Infra.Data.Repositories
                 .Select(r => new LastReportByEmployeeDTO
                 {
                     Description = r.Description,
-                    CreatedAt = r.Created_At
+                    Created_At = r.Created_At
                 })
                 .FirstOrDefaultAsync();
         }
