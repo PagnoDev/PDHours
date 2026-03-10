@@ -93,8 +93,8 @@ export class SquadDetailsService {
     const startRangeTime = new Date(`${startDate}T00:00:00`).getTime();
     const endRangeTime = new Date(`${endDate}T23:59:59`).getTime();
     const rows = this.extractRows(response).filter((row) => {
-      const dateValue = row['Created_At'];
-      if (typeof dateValue !== 'string' || dateValue.trim().length === 0) {
+      const dateValue = this.readReportCreatedAt(row);
+      if (!dateValue) {
         return false;
       }
 
@@ -111,15 +111,15 @@ export class SquadDetailsService {
     }
 
     const latest = [...rows].sort((first, second) => {
-      const firstDate = typeof first['Created_At'] === 'string' ? first['Created_At'] : '';
-      const secondDate = typeof second['Created_At'] === 'string' ? second['Created_At'] : '';
+      const firstDate = this.readReportCreatedAt(first) ?? '';
+      const secondDate = this.readReportCreatedAt(second) ?? '';
       const firstTime = firstDate ? new Date(firstDate).getTime() : 0;
       const secondTime = secondDate ? new Date(secondDate).getTime() : 0;
       return secondTime - firstTime;
     })[0];
 
-    const description = typeof latest['Description'] === 'string' ? latest['Description'] : '';
-    const createdAt = typeof latest['Created_At'] === 'string' ? latest['Created_At'] : '';
+    const description = this.readReportDescription(latest) ?? '';
+    const createdAt = this.readReportCreatedAt(latest) ?? '';
     if (!createdAt) {
       return null;
     }
@@ -128,6 +128,25 @@ export class SquadDetailsService {
       description: description || '-',
       createdAt
     };
+  }
+
+  private readReportDescription(row: Record<string, unknown>): string | null {
+    return this.readStringField(row, ['description']);
+  }
+
+  private readReportCreatedAt(row: Record<string, unknown>): string | null {
+    return this.readStringField(row, ['created_At']);
+  }
+
+  private readStringField(row: Record<string, unknown>, keys: string[]): string | null {
+    for (const key of keys) {
+      const value = row[key];
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value;
+      }
+    }
+
+    return null;
   }
 
   /**
