@@ -13,7 +13,6 @@ export interface EmployeeTableView {
   name: string;
   estimateHours: number;
   squadId: number;
-  squadName: string;
 }
 
 export interface SquadTableView {
